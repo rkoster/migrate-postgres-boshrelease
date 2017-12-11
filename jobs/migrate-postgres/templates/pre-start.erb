@@ -1,0 +1,10 @@
+#!/bin/bash
+
+OLD_STORE_DIR=/var/vcap/store/postgres-9.4
+NEW_STORE_DIR=/var/vcap/store/postgres
+
+if [ -d ${OLD_STORE_DIR} ]; then
+    mkdir -p ${NEW_STORE_DIR}
+    ln -s ${OLD_STORE_DIR} ${NEW_STORE_DIR}/postgres-unknown
+    /var/vcap/jobs/postgres/bin/pre-start
+fi							

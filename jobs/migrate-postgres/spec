@@ -1,0 +1,10 @@
+---
+name: migrate-postgres
+
+templates:
+  pre-start.erb: bin/pre-start
+
+packages:
+- postgres-unknown
+
+properties: {}
