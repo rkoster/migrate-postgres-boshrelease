@@ -5,6 +5,8 @@ NEW_STORE_DIR=/var/vcap/store/postgres
 
 if [ ! -d ${NEW_STORE_DIR}/postgres-previous ]; then
     mkdir -p ${NEW_STORE_DIR}
-    ln -s ${OLD_STORE_DIR} ${NEW_STORE_DIR}/postgres-unknown
+    mv ${OLD_STORE_DIR} ${NEW_STORE_DIR}/postgres-unknown
+    ln -s ${NEW_STORE_DIR}/postgres-unknown ${OLD_STORE_DIR}
     /var/vcap/jobs/postgres/bin/pre-start
+    rm ${OLD_STORE_DIR}
 fi
