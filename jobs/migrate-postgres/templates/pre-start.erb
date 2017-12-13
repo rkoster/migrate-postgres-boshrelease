@@ -1,10 +1,18 @@
 #!/bin/bash
 
+set -e
+set -x
+
 OLD_STORE_DIR=/var/vcap/store/postgres-9.4
 NEW_STORE_DIR=/var/vcap/store/postgres
 
-if [ ! -d ${NEW_STORE_DIR}/postgres-previous ]; then
-    mkdir -p ${NEW_STORE_DIR}
+if [[ -d ${OLD_STORE_DIR} && ! -L ${OLD_STORE_DIR} ]]; then
+    # wait for postgres/bin/pre-start to creat dir
+    until [ -d ${NEW_STORE_DIR}/postgres-* ] && [ "$(ps aux | grep jobs/postgres/bin/pre-start | wc -l)" = "1" ]; do
+	sleep 1
+    done
+    
+    rm -rf ${NEW_STORE_DIR} && mkdir -p ${NEW_STORE_DIR}
     mv ${OLD_STORE_DIR} ${NEW_STORE_DIR}/postgres-unknown
     ln -s ${NEW_STORE_DIR}/postgres-unknown ${OLD_STORE_DIR}
     /var/vcap/jobs/postgres/bin/pre-start
