@@ -3,7 +3,7 @@
 set -e
 set -x
 
-OLD_STORE_DIR=/var/vcap/store/postgres-9.4
+OLD_STORE_DIR=/var/vcap/store/postgres/db
 NEW_STORE_DIR=/var/vcap/store/postgres
 
 if [[ -d ${OLD_STORE_DIR} && ! -L ${OLD_STORE_DIR} ]]; then
@@ -12,9 +12,9 @@ if [[ -d ${OLD_STORE_DIR} && ! -L ${OLD_STORE_DIR} ]]; then
 	sleep 1
     done
     
-    rm -rf ${NEW_STORE_DIR} && mkdir -p ${NEW_STORE_DIR}
+    # rm -rf ${NEW_STORE_DIR} && mkdir -p ${NEW_STORE_DIR}
     mv ${OLD_STORE_DIR} ${NEW_STORE_DIR}/postgres-unknown
-    ln -s ${NEW_STORE_DIR}/postgres-unknown ${OLD_STORE_DIR}
+    # ln -s ${NEW_STORE_DIR}/postgres-unknown ${OLD_STORE_DIR}
     /var/vcap/jobs/postgres/bin/pre-start
-    rm ${OLD_STORE_DIR}
+    # rm -rf ${OLD_STORE_DIR}
 fi

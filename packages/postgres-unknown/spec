@@ -2,4 +2,4 @@
 name: postgres-unknown
 
 files:
-- postgres/postgresql-9.4.12.tar.gz
+- postgres/postgresql-9.5.19.tar.bz2
