@@ -6,15 +6,42 @@ set -x
 OLD_STORE_DIR=/var/vcap/store/postgres/db
 NEW_STORE_DIR=/var/vcap/store/postgres
 
-if [[ -d ${OLD_STORE_DIR} && ! -L ${OLD_STORE_DIR} ]]; then
+POSTGRES_UNKNOWN_BIN=/var/vcap/packages/postgres-unknown/bin
+RECODE_BIN=/var/vcap/packages/recode/bin
+
+if [[ -d ${OLD_STORE_DIR} ]]; then
     # wait for postgres/bin/pre-start to creat dir
     until [ -d ${NEW_STORE_DIR}/postgres-* ] && [ "$(ps aux | grep jobs/postgres/bin/pre-start | wc -l)" = "1" ]; do
 	sleep 1
     done
     
-    # rm -rf ${NEW_STORE_DIR} && mkdir -p ${NEW_STORE_DIR}
+    # start old database
+    # TODO: needs some checks
+    chpst -u vcap:vcap  ${POSTGRES_UNKNOWN_BIN}/pg_ctl -D /var/vcap/store/postgres/db  start
+    sleep 2
+
+    # set correct encoding
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c "UPDATE pg_database SET datcollate='en_US.UTF-8', datctype='en_US.UTF-8';"
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c "update pg_database set datallowconn = TRUE where datname = 'template0';"
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap template0 -c "update pg_database set datistemplate = FALSE where datname = 'template1';"
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap template0 -c "drop database template1;"
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap template0 -c "create database template1 with template = template0 encoding = 'UTF8';"
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap template0 -c "update pg_database set datistemplate = TRUE where datname = 'template1';"
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap template1 -c "update pg_database set datallowconn = FALSE where datname = 'template0';"
+    
+    /var/vcap/packages/postgres-11.6/bin/pg_dumpall -E utf8 -U vcap -c -f all.sql
+    sed -i 's/SQL_ASCII/UTF8/g' all.sql
+    # TODO: can be a oneliner with import?
+    cat all.sql | ${RECODE_BIN}/recode iso-8859-1..u8 > all-utf8.sql
+    
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres < all-utf8.sql
+
+    # stop old database
+    chpst -u vcap:vcap  ${POSTGRES_UNKNOWN_BIN}/pg_ctl -D /var/vcap/store/postgres/db  stop
+    sleep 2
+
+    rm -rf "${NEW_STORE_DIR}/POSTGRES_DATA_VERSION"
+    rm -rf "${NEW_STORE_DIR}/postgres-11.*" 
     mv ${OLD_STORE_DIR} ${NEW_STORE_DIR}/postgres-unknown
-    # ln -s ${NEW_STORE_DIR}/postgres-unknown ${OLD_STORE_DIR}
     /var/vcap/jobs/postgres/bin/pre-start
-    # rm -rf ${OLD_STORE_DIR}
 fi
