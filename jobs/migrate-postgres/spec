@@ -6,5 +6,6 @@ templates:
 
 packages:
 - postgres-unknown
+- recode
 
 properties: {}
