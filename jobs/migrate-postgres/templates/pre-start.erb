@@ -18,7 +18,7 @@ if [[ -d ${OLD_STORE_DIR} ]]; then
     # start old database
     # TODO: needs some checks
     chpst -u vcap:vcap  ${POSTGRES_UNKNOWN_BIN}/pg_ctl -D /var/vcap/store/postgres/db  start
-    sleep 2
+    sleep 5
 
     # set correct encoding
     ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c "UPDATE pg_database SET datcollate='en_US.UTF-8', datctype='en_US.UTF-8';"
@@ -28,8 +28,72 @@ if [[ -d ${OLD_STORE_DIR} ]]; then
     ${POSTGRES_UNKNOWN_BIN}/psql -U vcap template0 -c "create database template1 with template = template0 encoding = 'UTF8';"
     ${POSTGRES_UNKNOWN_BIN}/psql -U vcap template0 -c "update pg_database set datistemplate = TRUE where datname = 'template1';"
     ${POSTGRES_UNKNOWN_BIN}/psql -U vcap template1 -c "update pg_database set datallowconn = FALSE where datname = 'template0';"
+
+
+    echo "Creating roles..."
+    "${POSTGRES_UNKNOWN_BIN}/psql" \
+      -U "vcap" \
+      -d "postgres" -c "\set ON_ERROR_STOP on" -f "/var/vcap/jobs/postgres/config/roles.sql"
+
+    # rename databases according to the use in cf-deployment
+    # TODO: if db exists
+    if [ "$(${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -tAc "SELECT 1 FROM pg_database WHERE datname='ccdb'" )" = '1' ]; then
+      ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c 'ALTER DATABASE ccdb RENAME TO "cloud_controller";'
+      ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c 'ALTER DATABASE diegodb RENAME TO "diego";'
+      ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c 'ALTER DATABASE locketdb RENAME TO "locket";'
+      ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c 'ALTER DATABASE policyserverdb RENAME TO "network_policy";'
+      ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c 'ALTER DATABASE silkdb RENAME TO "network_connectivity";'
+      ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c 'ALTER DATABASE routingapidb RENAME TO "routing-api";'
+      ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c 'ALTER DATABASE uaadb RENAME TO "uaa";'
+        
+
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap cloud_controller -c 'ALTER DATABASE "cloud_controller" OWNER TO "cloud_controller";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap diego -c 'ALTER DATABASE "diego" OWNER TO "diego";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap locket -c 'ALTER DATABASE "locket" OWNER TO "locket";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap network_policy -c 'ALTER DATABASE "network_policy" OWNER TO "network_policy";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap network_connectivity -c 'ALTER DATABASE "network_connectivity" OWNER TO "network_connectivity";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap routing-api -c 'ALTER DATABASE "routing-api" OWNER TO "routing-api";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap uaa -c 'ALTER DATABASE "uaa" OWNER TO "uaa";'
+
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap cloud_controller -c 'REASSIGN OWNED BY "ccadmin" TO "cloud_controller";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap diego -c 'REASSIGN OWNED BY "diegoadmin" TO "diego";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap locket -c 'REASSIGN OWNED BY "locketadmin" TO "locket";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap network_policy -c 'REASSIGN OWNED BY "policyserveradmin" TO "network_policy";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap network_connectivity -c 'REASSIGN OWNED BY "silkadmin" TO "network_connectivity";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap routing-api -c 'REASSIGN OWNED BY "routingapiadmin" TO "routing-api";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap uaa -c 'REASSIGN OWNED BY "uaaadmin" TO "uaa";'
+
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap cloud_controller -c 'REVOKE ALL ON DATABASE "cloud_controller" FROM "ccadmin";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap diego -c 'REVOKE ALL ON DATABASE "diego" FROM "diegoadmin";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap locket -c 'REVOKE ALL ON DATABASE "locket" FROM "locketadmin" ;'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap network_policy -c 'REVOKE ALL ON DATABASE "network_policy" FROM "policyserveradmin";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap network_connectivity -c 'REVOKE ALL ON DATABASE "network_connectivity" FROM "silkadmin";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap routing-api -c 'REVOKE ALL ON DATABASE "routing-api" FROM "routingapiadmin";'
+    ${POSTGRES_UNKNOWN_BIN}/psql -U vcap uaa -c 'REVOKE ALL ON DATABASE uaa FROM uaaadmin;'
+    else
+      echo "ccdb does not exists or is already renamed"
+    fi 
+    # drop unsued admin dbs
+    ${POSTGRES_UNKNOWN_BIN}/dropdb --if-exists -U vcap uaaadmin
+    ${POSTGRES_UNKNOWN_BIN}/dropdb --if-exists -U vcap silkadmin
+    ${POSTGRES_UNKNOWN_BIN}/dropdb --if-exists -U vcap routingapiadmin
+    ${POSTGRES_UNKNOWN_BIN}/dropdb --if-exists -U vcap policyserveradmin
+    ${POSTGRES_UNKNOWN_BIN}/dropdb --if-exists -U vcap locketadmin
+    ${POSTGRES_UNKNOWN_BIN}/dropdb --if-exists -U vcap diegoadmin
+    ${POSTGRES_UNKNOWN_BIN}/dropdb --if-exists -U vcap ccadmin
+    ${POSTGRES_UNKNOWN_BIN}/dropdb --if-exists -U vcap shield
+
+    ${POSTGRES_UNKNOWN_BIN}/dropuser --if-exists -U vcap uaaadmin
+    ${POSTGRES_UNKNOWN_BIN}/dropuser --if-exists -U vcap silkadmin
+    ${POSTGRES_UNKNOWN_BIN}/dropuser --if-exists -U vcap routingapiadmin
+    ${POSTGRES_UNKNOWN_BIN}/dropuser --if-exists -U vcap policyserveradmin
+    ${POSTGRES_UNKNOWN_BIN}/dropuser --if-exists -U vcap locketadmin
+    ${POSTGRES_UNKNOWN_BIN}/dropuser --if-exists -U vcap diegoadmin
+    ${POSTGRES_UNKNOWN_BIN}/dropuser --if-exists -U vcap ccadmin
+    ${POSTGRES_UNKNOWN_BIN}/dropuser --if-exists -U vcap shield
+
     
-    /var/vcap/packages/postgres-11.6/bin/pg_dumpall -E utf8 -U vcap -c -f all.sql
+    /var/vcap/packages/postgres-11.6/bin/pg_dumpall -E utf8 -U vcap -c --no-privileges -f all.sql
     sed -i 's/SQL_ASCII/UTF8/g' all.sql
     # TODO: can be a oneliner with import?
     cat all.sql | ${RECODE_BIN}/recode iso-8859-1..u8 > all-utf8.sql
@@ -38,7 +102,7 @@ if [[ -d ${OLD_STORE_DIR} ]]; then
 
     # stop old database
     chpst -u vcap:vcap  ${POSTGRES_UNKNOWN_BIN}/pg_ctl -D /var/vcap/store/postgres/db  stop
-    sleep 2
+    sleep 5
 
     rm -rf "${NEW_STORE_DIR}/POSTGRES_DATA_VERSION"
     rm -rf "${NEW_STORE_DIR}/postgres-11.*" 
