@@ -1,3 +1,5 @@
 name: migrate-postgres
 blobstore:
-  provider: local
+  provider: s3
+  options:
+    bucket_name: migrate-postgres-boshrelease
