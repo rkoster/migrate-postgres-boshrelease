@@ -1,0 +1,23 @@
+name: migrate-postgres
+version: 1.0.0
+commit_hash: 8146c26
+uncommitted_changes: true
+jobs:
+- name: migrate-postgres
+  version: f98bfd67e728228558098c534a698ab1dbe2cebcc99fa37deed9920febf2cb00
+  fingerprint: f98bfd67e728228558098c534a698ab1dbe2cebcc99fa37deed9920febf2cb00
+  sha1: sha256:18f3d66e19341a8a35ed2cff661e68ba658244e2ae2f28b44a4286368075c91f
+  packages:
+  - postgres-unknown
+  - recode
+packages:
+- name: postgres-unknown
+  version: 4705199d7170bffd03df5fc169f9dffb58c295840d2b10543b2c69690fa4f425
+  fingerprint: 4705199d7170bffd03df5fc169f9dffb58c295840d2b10543b2c69690fa4f425
+  sha1: sha256:2dbabd1f39256026f05b26b40b5752507bc512aeabf6b26e040c78c8e0de741f
+  dependencies: []
+- name: recode
+  version: 95ff504e66f01a060b00f96845fcae22b441c87ee5250a1bc46c9aaffbca87bc
+  fingerprint: 95ff504e66f01a060b00f96845fcae22b441c87ee5250a1bc46c9aaffbca87bc
+  sha1: sha256:5164ba483984106be1568ad4d43d5d7d3398393ed066f9aa6fe3a987240715cd
+  dependencies: []
