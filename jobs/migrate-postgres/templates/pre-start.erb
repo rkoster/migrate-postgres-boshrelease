@@ -14,7 +14,7 @@ if [[ -d ${OLD_STORE_DIR} ]]; then
     until [ -d ${NEW_STORE_DIR}/postgres-* ] && [ "$(ps aux | grep jobs/postgres/bin/pre-start | wc -l)" = "1" ]; do
 	sleep 1
     done
-    
+
     # start old database
     # TODO: needs some checks
     chpst -u vcap:vcap  ${POSTGRES_UNKNOWN_BIN}/pg_ctl -D /var/vcap/store/postgres/db  start
@@ -45,7 +45,7 @@ if [[ -d ${OLD_STORE_DIR} ]]; then
       ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c 'ALTER DATABASE silkdb RENAME TO "network_connectivity";'
       ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c 'ALTER DATABASE routingapidb RENAME TO "routing-api";'
       ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres -c 'ALTER DATABASE uaadb RENAME TO "uaa";'
-        
+
 
     ${POSTGRES_UNKNOWN_BIN}/psql -U vcap cloud_controller -c 'ALTER DATABASE "cloud_controller" OWNER TO "cloud_controller";'
     ${POSTGRES_UNKNOWN_BIN}/psql -U vcap diego -c 'ALTER DATABASE "diego" OWNER TO "diego";'
@@ -72,7 +72,7 @@ if [[ -d ${OLD_STORE_DIR} ]]; then
     ${POSTGRES_UNKNOWN_BIN}/psql -U vcap uaa -c 'REVOKE ALL ON DATABASE uaa FROM uaaadmin;'
     else
       echo "ccdb does not exists or is already renamed"
-    fi 
+    fi
     # drop unsued admin dbs
     ${POSTGRES_UNKNOWN_BIN}/dropdb --if-exists -U vcap uaaadmin
     ${POSTGRES_UNKNOWN_BIN}/dropdb --if-exists -U vcap silkadmin
@@ -92,12 +92,12 @@ if [[ -d ${OLD_STORE_DIR} ]]; then
     ${POSTGRES_UNKNOWN_BIN}/dropuser --if-exists -U vcap ccadmin
     ${POSTGRES_UNKNOWN_BIN}/dropuser --if-exists -U vcap shield
 
-    
-    /var/vcap/packages/postgres-11.6/bin/pg_dumpall -E utf8 -U vcap -c --no-privileges -f all.sql
+
+    /var/vcap/packages/postgres-11.*/bin/pg_dumpall -E utf8 -U vcap -c --no-privileges -f all.sql
     sed -i 's/SQL_ASCII/UTF8/g' all.sql
     # TODO: can be a oneliner with import?
     cat all.sql | ${RECODE_BIN}/recode iso-8859-1..u8 > all-utf8.sql
-    
+
     ${POSTGRES_UNKNOWN_BIN}/psql -U vcap postgres < all-utf8.sql
 
     # stop old database
@@ -105,7 +105,7 @@ if [[ -d ${OLD_STORE_DIR} ]]; then
     sleep 5
 
     rm -rf "${NEW_STORE_DIR}/POSTGRES_DATA_VERSION"
-    rm -rf "${NEW_STORE_DIR}/postgres-11.*" 
+    rm -rf "${NEW_STORE_DIR}/postgres-11.*"
     mv ${OLD_STORE_DIR} ${NEW_STORE_DIR}/postgres-unknown
     /var/vcap/jobs/postgres/bin/pre-start
 fi
